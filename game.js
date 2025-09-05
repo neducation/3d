@@ -569,9 +569,11 @@ class Game3D {
     this.playerX += (this.targetX - this.playerX) * 0.1;
     this.player.position.x = this.playerX;
 
-    // Move camera
-    this.camera.position.z += this.speed;
+    // Keep camera following player at fixed relative position
     this.camera.position.x = this.playerX * 0.3;
+    this.camera.position.y = 15;
+    this.camera.position.z = this.player.position.z + 20;
+    this.camera.lookAt(this.player.position.x, 0, this.player.position.z);
 
     // Update distance and difficulty
     this.distance += this.speed * 100;
