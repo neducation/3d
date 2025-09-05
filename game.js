@@ -10,9 +10,10 @@ class Game3D {
     this.multipliers = [];
     this.coins = [];
     this.obstacles = [];
+    this.bullets = [];
 
     // Game state
-    this.gameState = "loading"; // loading, start, playing, gameOver
+    this.gameState = "loading"; // loading, start, playing, gameOver, settings
     this.score = 0;
     this.armySize = 10;
     this.coinsCollected = 0;
@@ -35,6 +36,64 @@ class Game3D {
     // Timing
     this.lastSpawn = 0;
     this.gameTime = 0;
+    this.lastShoot = 0;
+
+    // Settings
+    this.settings = {
+      sensitivity: 1.0,
+      theme: "military",
+      autoShoot: true,
+      maxArmySize: 200,
+      particles: true,
+      sound: true,
+      volume: 0.5,
+    };
+
+    // Theme data
+    this.themes = {
+      military: {
+        icon: "🪖",
+        color: 0x4caf50,
+        enemyColor: 0xe74c3c,
+        name: "Military",
+      },
+      robots: {
+        icon: "🤖",
+        color: 0x2196f3,
+        enemyColor: 0xff5722,
+        name: "Robots",
+      },
+      zombies: {
+        icon: "🧟",
+        color: 0x8bc34a,
+        enemyColor: 0x795548,
+        name: "Zombies",
+      },
+      ninjas: {
+        icon: "🥷",
+        color: 0x9c27b0,
+        enemyColor: 0x607d8b,
+        name: "Ninjas",
+      },
+      knights: {
+        icon: "⚔️",
+        color: 0xffd700,
+        enemyColor: 0x8b0000,
+        name: "Knights",
+      },
+      aliens: {
+        icon: "👽",
+        color: 0x00e676,
+        enemyColor: 0x3f51b5,
+        name: "Aliens",
+      },
+    };
+
+    // Weapon system
+    this.weaponLevel = 1;
+    this.weaponDamage = 1;
+    this.shootRange = 15;
+    this.maxHitboxSize = 8;
 
     this.init();
   }
@@ -234,10 +293,11 @@ class Game3D {
 
   createSoldier() {
     const soldier = new THREE.Group();
+    const theme = this.themes[this.settings.theme];
 
     // Body
     const bodyGeometry = new THREE.BoxGeometry(0.3, 0.6, 0.2);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x4caf50 });
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: theme.color });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 0.5;
     body.castShadow = true;
@@ -251,23 +311,59 @@ class Game3D {
     head.castShadow = true;
     soldier.add(head);
 
-    // Helmet
+    // Helmet/Theme specific headgear
     const helmetGeometry = new THREE.SphereGeometry(0.17);
-    const helmetMaterial = new THREE.MeshLambertMaterial({ color: 0x2e7d32 });
+    const helmetMaterial = new THREE.MeshLambertMaterial({
+      color: this.adjustColor(theme.color, -0.2),
+    });
     const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
     helmet.position.y = 1;
     helmet.castShadow = true;
     soldier.add(helmet);
 
-    // Weapon
-    const weaponGeometry = new THREE.BoxGeometry(0.05, 0.8, 0.05);
-    const weaponMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    // Enhanced weapon based on level
+    const weaponLevel = Math.min(this.weaponLevel, 5);
+    const weaponSize = 0.05 + weaponLevel * 0.02;
+    const weaponLength = 0.8 + weaponLevel * 0.1;
+
+    const weaponGeometry = new THREE.BoxGeometry(
+      weaponSize,
+      weaponLength,
+      weaponSize
+    );
+    const weaponColor =
+      weaponLevel > 3 ? 0xffd700 : weaponLevel > 1 ? 0x888888 : 0x333333;
+    const weaponMaterial = new THREE.MeshLambertMaterial({
+      color: weaponColor,
+      emissive: weaponLevel > 2 ? 0x111111 : 0x000000,
+    });
     const weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
     weapon.position.set(0.2, 0.6, 0);
     weapon.castShadow = true;
     soldier.add(weapon);
 
+    // Weapon upgrade indicator
+    if (weaponLevel > 2) {
+      const scopeGeometry = new THREE.BoxGeometry(0.02, 0.1, 0.02);
+      const scopeMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
+      const scope = new THREE.Mesh(scopeGeometry, scopeMaterial);
+      scope.position.set(0.2, 1.0, 0);
+      soldier.add(scope);
+    }
+
     return soldier;
+  }
+
+  adjustColor(color, amount) {
+    const r = (color >> 16) & 0xff;
+    const g = (color >> 8) & 0xff;
+    const b = color & 0xff;
+
+    const newR = Math.max(0, Math.min(255, r + amount * 255));
+    const newG = Math.max(0, Math.min(255, g + amount * 255));
+    const newB = Math.max(0, Math.min(255, b + amount * 255));
+
+    return (newR << 16) | (newG << 8) | newB;
   }
 
   setupControls() {
@@ -299,7 +395,7 @@ class Game3D {
     if (this.gameState !== "playing" || !this.isDragging) return;
 
     const deltaX = e.clientX - this.lastMouseX;
-    this.targetX += deltaX * 0.01;
+    this.targetX += deltaX * 0.01 * this.settings.sensitivity;
     this.targetX = Math.max(-6, Math.min(6, this.targetX));
     this.lastMouseX = e.clientX;
   }
@@ -344,6 +440,7 @@ class Game3D {
     // UI elements
     this.loadingScreen = document.getElementById("loadingScreen");
     this.startScreen = document.getElementById("startScreen");
+    this.settingsScreen = document.getElementById("settingsScreen");
     this.gameHUD = document.getElementById("gameHUD");
     this.gameOverScreen = document.getElementById("gameOverScreen");
     this.touchIndicator = document.getElementById("touchIndicator");
@@ -355,6 +452,15 @@ class Game3D {
     document
       .getElementById("restartBtn")
       .addEventListener("click", () => this.restartGame());
+    document
+      .getElementById("settingsBtn")
+      .addEventListener("click", () => this.showSettings());
+    document
+      .getElementById("backBtn")
+      .addEventListener("click", () => this.hideSettings());
+    document
+      .getElementById("resetSettingsBtn")
+      .addEventListener("click", () => this.resetSettings());
 
     // HUD elements
     this.scoreEl = document.getElementById("score");
@@ -362,6 +468,136 @@ class Game3D {
     this.coinsEl = document.getElementById("coins");
     this.levelEl = document.getElementById("level");
     this.distanceEl = document.getElementById("distance");
+    this.armyThemeIconEl = document.getElementById("armyThemeIcon");
+    this.weaponLevelEl = document.getElementById("weaponLevel");
+    this.hitboxFillEl = document.getElementById("hitboxFill");
+
+    // Settings elements
+    this.sensitivitySlider = document.getElementById("sensitivitySlider");
+    this.sensitivityValue = document.getElementById("sensitivityValue");
+    this.autoShootToggle = document.getElementById("autoShootToggle");
+    this.maxArmySelect = document.getElementById("maxArmySelect");
+    this.particlesToggle = document.getElementById("particlesToggle");
+    this.soundToggle = document.getElementById("soundToggle");
+    this.volumeSlider = document.getElementById("volumeSlider");
+    this.volumeValue = document.getElementById("volumeValue");
+
+    // Settings event listeners
+    this.sensitivitySlider.addEventListener("input", (e) => {
+      this.settings.sensitivity = parseFloat(e.target.value);
+      this.sensitivityValue.textContent =
+        this.settings.sensitivity.toFixed(1) + "x";
+    });
+
+    this.volumeSlider.addEventListener("input", (e) => {
+      this.settings.volume = parseFloat(e.target.value);
+      this.volumeValue.textContent =
+        Math.round(this.settings.volume * 100) + "%";
+    });
+
+    this.autoShootToggle.addEventListener("change", (e) => {
+      this.settings.autoShoot = e.target.checked;
+    });
+
+    this.maxArmySelect.addEventListener("change", (e) => {
+      this.settings.maxArmySize = parseInt(e.target.value);
+    });
+
+    this.particlesToggle.addEventListener("change", (e) => {
+      this.settings.particles = e.target.checked;
+    });
+
+    this.soundToggle.addEventListener("change", (e) => {
+      this.settings.sound = e.target.checked;
+    });
+
+    // Theme selection
+    document.querySelectorAll(".theme-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        document
+          .querySelectorAll(".theme-card")
+          .forEach((c) => c.classList.remove("active"));
+        card.classList.add("active");
+        this.settings.theme = card.dataset.theme;
+        this.updateTheme();
+      });
+    });
+
+    this.loadSettings();
+  }
+
+  loadSettings() {
+    // Load settings from localStorage
+    const saved = localStorage.getItem("armyRunnerSettings");
+    if (saved) {
+      this.settings = { ...this.settings, ...JSON.parse(saved) };
+    }
+    this.updateSettingsUI();
+    this.updateTheme();
+  }
+
+  saveSettings() {
+    localStorage.setItem("armyRunnerSettings", JSON.stringify(this.settings));
+  }
+
+  updateSettingsUI() {
+    this.sensitivitySlider.value = this.settings.sensitivity;
+    this.sensitivityValue.textContent =
+      this.settings.sensitivity.toFixed(1) + "x";
+    this.autoShootToggle.checked = this.settings.autoShoot;
+    this.maxArmySelect.value = this.settings.maxArmySize;
+    this.particlesToggle.checked = this.settings.particles;
+    this.soundToggle.checked = this.settings.sound;
+    this.volumeSlider.value = this.settings.volume;
+    this.volumeValue.textContent = Math.round(this.settings.volume * 100) + "%";
+
+    // Update active theme
+    document.querySelectorAll(".theme-card").forEach((card) => {
+      card.classList.toggle(
+        "active",
+        card.dataset.theme === this.settings.theme
+      );
+    });
+  }
+
+  updateTheme() {
+    const theme = this.themes[this.settings.theme];
+    if (this.armyThemeIconEl) {
+      this.armyThemeIconEl.textContent = theme.icon;
+    }
+
+    // Update player army colors if in game
+    if (this.player && this.playerSoldiers) {
+      this.updatePlayerArmy();
+    }
+  }
+
+  showSettings() {
+    this.startScreen.style.display = "none";
+    this.settingsScreen.style.display = "flex";
+    this.gameState = "settings";
+  }
+
+  hideSettings() {
+    this.settingsScreen.style.display = "none";
+    this.startScreen.style.display = "flex";
+    this.gameState = "start";
+    this.saveSettings();
+  }
+
+  resetSettings() {
+    this.settings = {
+      sensitivity: 1.0,
+      theme: "military",
+      autoShoot: true,
+      maxArmySize: 200,
+      particles: true,
+      sound: true,
+      volume: 0.5,
+    };
+    this.updateSettingsUI();
+    this.updateTheme();
+    this.saveSettings();
   }
 
   startLoadingSequence() {
@@ -430,15 +666,19 @@ class Game3D {
 
   createEnemy(x, z, health = 1) {
     const enemy = new THREE.Group();
+    const theme = this.themes[this.settings.theme];
+
     enemy.userData = {
       health: health * this.difficulty,
       maxHealth: health * this.difficulty,
       type: "enemy",
     };
 
-    // Enemy body
+    // Enemy body with theme colors
     const bodyGeometry = new THREE.BoxGeometry(0.4, 0.8, 0.3);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xe74c3c });
+    const bodyMaterial = new THREE.MeshLambertMaterial({
+      color: theme.enemyColor,
+    });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 0.6;
     body.castShadow = true;
@@ -446,7 +686,9 @@ class Game3D {
 
     // Enemy head
     const headGeometry = new THREE.SphereGeometry(0.2);
-    const headMaterial = new THREE.MeshLambertMaterial({ color: 0xc0392b });
+    const headMaterial = new THREE.MeshLambertMaterial({
+      color: this.adjustColor(theme.enemyColor, -0.3),
+    });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1.2;
     head.castShadow = true;
@@ -554,6 +796,73 @@ class Game3D {
     return coin;
   }
 
+  createBullet(startPos, targetPos) {
+    const bullet = new THREE.Group();
+    bullet.userData = { type: "bullet", damage: this.weaponDamage };
+
+    const bulletGeometry = new THREE.SphereGeometry(0.05);
+    const bulletMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffd700,
+      emissive: 0x444400,
+    });
+    const bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
+    bullet.add(bulletMesh);
+
+    bullet.position.copy(startPos);
+
+    // Calculate direction to target
+    const direction = new THREE.Vector3()
+      .subVectors(targetPos, startPos)
+      .normalize();
+    bullet.userData.velocity = direction.multiplyScalar(0.8);
+    bullet.userData.life = 100; // Bullet lifetime in frames
+
+    this.bullets.push(bullet);
+    this.scene.add(bullet);
+
+    return bullet;
+  }
+
+  shootAtEnemies() {
+    if (!this.settings.autoShoot) return;
+    if (this.gameTime - this.lastShoot < 10) return; // Shoot every 10 frames
+
+    // Find nearest enemy within range
+    let nearestEnemy = null;
+    let nearestDistance = this.shootRange;
+
+    this.enemies.forEach((enemy) => {
+      const distance = enemy.position.distanceTo(this.player.position);
+      if (distance < nearestDistance) {
+        nearestEnemy = enemy;
+        nearestDistance = distance;
+      }
+    });
+
+    if (nearestEnemy && this.playerSoldiers.length > 0) {
+      // Calculate army hitbox size (limited to maxHitboxSize)
+      const armyHitboxSize = Math.min(
+        this.maxHitboxSize,
+        Math.sqrt(this.armySize) * 0.5
+      );
+
+      // Shoot from random soldiers in formation
+      const shooters = Math.min(3, this.playerSoldiers.length);
+      for (let i = 0; i < shooters; i++) {
+        const shooter =
+          this.playerSoldiers[
+            Math.floor(Math.random() * this.playerSoldiers.length)
+          ];
+        const shooterWorldPos = new THREE.Vector3();
+        shooter.getWorldPosition(shooterWorldPos);
+
+        this.createBullet(shooterWorldPos, nearestEnemy.position);
+      }
+
+      this.lastShoot = this.gameTime;
+    }
+  }
+
   spawnObjects() {
     if (this.gameTime - this.lastSpawn < this.spawnRate) return;
 
@@ -617,6 +926,49 @@ class Game3D {
     this.level = Math.floor(this.distance / 1000) + 1;
     this.difficulty = 1 + (this.level - 1) * 0.3;
     this.speed = 0.1 + this.level * 0.01;
+
+    // Update weapon level based on progress
+    this.weaponLevel = Math.floor(this.level / 3) + 1;
+    this.weaponDamage = this.weaponLevel;
+
+    // Shooting system
+    this.shootAtEnemies();
+
+    // Update bullets
+    this.bullets.forEach((bullet, index) => {
+      bullet.position.add(bullet.userData.velocity);
+      bullet.userData.life--;
+
+      if (bullet.userData.life <= 0 || bullet.position.z > 30) {
+        this.scene.remove(bullet);
+        this.bullets.splice(index, 1);
+        return;
+      }
+
+      // Check bullet-enemy collision
+      this.enemies.forEach((enemy, enemyIndex) => {
+        const distance = bullet.position.distanceTo(enemy.position);
+        if (distance < 1) {
+          // Hit enemy
+          enemy.userData.health -= bullet.userData.damage;
+          this.createHitParticles(bullet.position, 0xffd700);
+
+          // Remove bullet
+          this.scene.remove(bullet);
+          this.bullets.splice(index, 1);
+
+          // Check if enemy is defeated
+          if (enemy.userData.health <= 0) {
+            this.score += Math.floor(
+              enemy.userData.maxHealth * 10 * this.difficulty
+            );
+            this.scene.remove(enemy);
+            this.enemies.splice(enemyIndex, 1);
+            this.createExplosionParticles(enemy.position);
+          }
+        }
+      });
+    });
 
     // Update enemies
     this.enemies.forEach((enemy, index) => {
@@ -732,7 +1084,11 @@ class Game3D {
       this.armySize = Math.floor(this.armySize / 2);
     }
 
-    this.armySize = Math.max(1, Math.min(200, this.armySize));
+    // Use settings for max army size
+    this.armySize = Math.max(
+      1,
+      Math.min(this.settings.maxArmySize, this.armySize)
+    );
 
     this.updatePlayerArmy();
     this.createCollectParticles(
@@ -759,6 +1115,8 @@ class Game3D {
   }
 
   createHitParticles(position, color) {
+    if (!this.settings.particles) return;
+
     for (let i = 0; i < 5; i++) {
       const particleGeometry = new THREE.SphereGeometry(0.1);
       const particleMaterial = new THREE.MeshBasicMaterial({
@@ -781,6 +1139,8 @@ class Game3D {
   }
 
   createExplosionParticles(position) {
+    if (!this.settings.particles) return;
+
     for (let i = 0; i < 10; i++) {
       const particleGeometry = new THREE.SphereGeometry(0.05);
       const particleMaterial = new THREE.MeshBasicMaterial({
@@ -838,6 +1198,20 @@ class Game3D {
     this.coinsEl.textContent = this.coinsCollected;
     this.levelEl.textContent = this.level;
     this.distanceEl.textContent = Math.floor(this.distance) + "m";
+
+    // Update new UI elements
+    if (this.weaponLevelEl) {
+      this.weaponLevelEl.textContent = this.weaponLevel;
+    }
+
+    // Update hitbox indicator
+    if (this.hitboxFillEl) {
+      const hitboxPercentage = Math.min(
+        100,
+        (Math.sqrt(this.armySize) / this.maxHitboxSize) * 100
+      );
+      this.hitboxFillEl.style.width = hitboxPercentage + "%";
+    }
   }
 
   gameOver() {

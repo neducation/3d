@@ -492,6 +492,232 @@ body {
   }
 }
 
+/* Settings Menu Styles */
+#settingsScreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1600;
+  pointer-events: all;
+  overflow-y: auto;
+}
+
+.settings-content {
+  text-align: center;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.settings-content h1 {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  color: #3498db;
+}
+
+.settings-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+}
+
+.settings-section h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  color: #ecf0f1;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+
+.setting-item label {
+  flex: 1;
+  text-align: left;
+  font-weight: bold;
+}
+
+.setting-item input[type="range"] {
+  flex: 1;
+  margin: 0 1rem;
+}
+
+.setting-item select {
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  padding: 0.5rem;
+}
+
+.setting-item input[type="checkbox"] {
+  transform: scale(1.5);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.theme-card {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 15px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.theme-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.theme-card.active {
+  border-color: #3498db;
+  background: rgba(52, 152, 219, 0.3);
+}
+
+.theme-preview {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.theme-card span {
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.menu-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.settings-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.game-btn.secondary {
+  background: linear-gradient(45deg, #7f8c8d, #95a5a6);
+}
+
+.game-btn.secondary:hover {
+  background: linear-gradient(45deg, #95a5a6, #bdc3c7);
+}
+
+/* Enhanced HUD Styles */
+.army-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.weapons-container,
+.hitbox-indicator {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 15px;
+  border-radius: 25px;
+  color: white;
+  font-weight: bold;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  min-width: 80px;
+  text-align: center;
+}
+
+.weapons-label,
+.hitbox-label {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+.hitbox-bar {
+  width: 60px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.hitbox-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71);
+  width: 50%;
+  transition: width 0.3s ease;
+}
+
+#armyThemeIcon {
+  font-size: 1.2rem;
+}
+
+#weaponLevel {
+  color: #f39c12;
+  font-size: 1.2rem;
+}
+
+/* Mobile responsive settings */
+@media (max-width: 768px) {
+  .settings-content {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .theme-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .setting-item {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .setting-item label {
+    text-align: center;
+  }
+
+  .hud-top,
+  .hud-bottom {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .weapons-container,
+  .hitbox-indicator {
+    min-width: 70px;
+    padding: 8px 12px;
+  }
+}
+
 /* Hide scrollbars */
 ::-webkit-scrollbar {
   display: none;
