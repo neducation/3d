@@ -82,6 +82,13 @@ class Game3D {
     );
     this.camera.position.set(0, 15, 20);
     this.camera.lookAt(0, 0, 0);
+
+    // Store initial camera position for iOS fix
+    this.initialCameraPosition = {
+      x: 0,
+      y: 15,
+      z: 20,
+    };
   }
 
   setupLights() {
@@ -302,9 +309,35 @@ class Game3D {
   }
 
   onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    // iOS Safari specific fixes
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    if (isIOS) {
+      // Force update dimensions for iOS
+      setTimeout(() => {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Reset camera position explicitly for iOS
+        this.resetCamera();
+      }, 100);
+    } else {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+  }
+
+  resetCamera() {
+    // Force reset camera to exact position (iOS Safari fix)
+    this.camera.position.set(
+      this.playerX * 0.3,
+      this.initialCameraPosition.y,
+      this.initialCameraPosition.z
+    );
+    this.camera.lookAt(this.playerX, 0, 0);
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
   setupUI() {
@@ -569,11 +602,15 @@ class Game3D {
     this.playerX += (this.targetX - this.playerX) * 0.1;
     this.player.position.x = this.playerX;
 
-    // Keep camera in fixed position behind stationary player
-    this.camera.position.x = this.playerX * 0.3;
-    this.camera.position.y = 15;
-    this.camera.position.z = 20; // Fixed position behind player
-    this.camera.lookAt(this.playerX, 0, 0); // Always look at player position
+    // Keep camera in fixed position behind stationary player (iOS Safari fix)
+    this.camera.position.setX(this.playerX * 0.3);
+    this.camera.position.setY(this.initialCameraPosition.y);
+    this.camera.position.setZ(this.initialCameraPosition.z);
+
+    // Force camera to look at player (explicit for iOS)
+    const lookAtTarget = new THREE.Vector3(this.playerX, 0, 0);
+    this.camera.lookAt(lookAtTarget);
+    this.camera.updateProjectionMatrix();
 
     // Update distance and difficulty
     this.distance += this.speed * 100;
@@ -823,6 +860,14 @@ class Game3D {
       this.spawnObjects();
       this.updateGameObjects();
       this.updateUI();
+
+      // iOS Safari camera drift fix - reset every 60 frames
+      if (this.gameTime % 60 === 0) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+          this.resetCamera();
+        }
+      }
     }
 
     // Always render
